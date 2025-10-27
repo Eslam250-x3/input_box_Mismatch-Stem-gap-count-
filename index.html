@@ -1,0 +1,909 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>محرر أسئلة JSON - Mismatch Fixer</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Noto+Naskh+Arabic:wght@400;500;600;700&family=Cairo:wght@400;600;700&display=swap" rel="stylesheet">
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        
+        body {
+            font-family: 'Cairo', 'Noto Naskh Arabic', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            padding: 20px;
+        }
+        
+        .container {
+            max-width: 1400px;
+            margin: 0 auto;
+            background: white;
+            border-radius: 20px;
+            box-shadow: 0 20px 60px rgba(0,0,0,0.3);
+            overflow: hidden;
+        }
+        
+        .header {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            padding: 40px;
+            text-align: center;
+        }
+        
+        .header h1 { font-size: 2.5em; margin-bottom: 10px; }
+        .header p { font-size: 1.2em; opacity: 0.9; }
+        
+        .upload-section {
+            padding: 60px 40px;
+            text-align: center;
+        }
+        
+        .upload-area {
+            border: 4px dashed #667eea;
+            border-radius: 20px;
+            padding: 60px;
+            background: #f8f9ff;
+            cursor: pointer;
+            transition: all 0.3s;
+        }
+        
+        .upload-area:hover { border-color: #764ba2; background: #f0f2ff; transform: scale(1.02); }
+        .upload-icon { font-size: 5em; margin-bottom: 20px; }
+        
+        .btn {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            border: none;
+            padding: 18px 45px;
+            border-radius: 50px;
+            font-size: 1.2em;
+            cursor: pointer;
+            transition: all 0.3s;
+            margin: 10px;
+            font-weight: bold;
+        }
+        
+        .btn:hover { transform: translateY(-3px); box-shadow: 0 10px 25px rgba(102, 126, 234, 0.4); }
+        
+        .stats {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+            gap: 25px;
+            padding: 40px;
+            background: #f8f9ff;
+        }
+        
+        .stat-card {
+            background: white;
+            padding: 30px;
+            border-radius: 20px;
+            text-align: center;
+            box-shadow: 0 8px 20px rgba(0,0,0,0.1);
+            transition: all 0.3s;
+        }
+        
+        .stat-card:hover { transform: translateY(-5px); }
+        .stat-number { font-size: 3em; font-weight: bold; color: #667eea; }
+        .stat-label { color: #666; margin-top: 10px; font-size: 1.1em; }
+        
+        .file-item {
+            background: white;
+            border: 2px solid #e0e0e0;
+            border-radius: 20px;
+            padding: 30px;
+            margin: 20px 40px;
+            transition: all 0.3s;
+        }
+        
+        .file-item:hover { border-color: #667eea; box-shadow: 0 10px 30px rgba(102, 126, 234, 0.15); }
+        
+        .file-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 20px;
+        }
+        
+        .file-name { font-size: 1.5em; font-weight: bold; color: #333; }
+        
+        .error-badge {
+            background: #ff4757;
+            color: white;
+            padding: 8px 20px;
+            border-radius: 25px;
+            font-size: 1em;
+            font-weight: bold;
+        }
+        
+        .question-box {
+            background: #e8f5e9;
+            padding: 25px;
+            border-radius: 15px;
+            margin-bottom: 20px;
+            border-right: 5px solid #4caf50;
+        }
+        
+        .question-title {
+            font-size: 1.2em;
+            font-weight: bold;
+            margin-bottom: 12px;
+            color: #2e7d32;
+        }
+        
+        .question-text {
+            background: white;
+            padding: 20px;
+            border-radius: 10px;
+            font-size: 1.2em;
+            line-height: 1.9;
+            color: #333;
+        }
+        
+        .problem-trigger {
+            background: #ff4757;
+            color: white;
+            padding: 8px 20px;
+            border-radius: 25px;
+            cursor: pointer;
+            font-weight: bold;
+            font-size: 1.1em;
+            margin: 15px 0;
+            display: inline-block;
+            transition: all 0.3s ease;
+            box-shadow: 0 3px 10px rgba(255, 71, 87, 0.3);
+        }
+        
+        .problem-trigger:hover {
+            background: #ff3742;
+            transform: translateY(-2px);
+            box-shadow: 0 5px 15px rgba(255, 71, 87, 0.4);
+        }
+        
+        .problem-box {
+            background: #fff3cd;
+            border: 2px solid #ffc107;
+            border-radius: 15px;
+            padding: 25px;
+            margin-bottom: 20px;
+        }
+        
+        .problem-title { font-size: 1.3em; font-weight: bold; color: #e65100; margin-bottom: 15px; }
+        
+        .stat-row {
+            padding: 15px;
+            background: white;
+            border-radius: 10px;
+            margin-bottom: 12px;
+            font-size: 1.2em;
+        }
+        
+        .choices-box {
+            background: #f0f8ff;
+            padding: 25px;
+            border-radius: 15px;
+            border: 3px solid #2196f3;
+            margin-bottom: 20px;
+        }
+        
+        .choices-title {
+            font-size: 1.3em;
+            font-weight: bold;
+            margin-bottom: 20px;
+            color: #1976d2;
+        }
+        
+        .choice-item {
+            display: flex;
+            align-items: center;
+            padding: 20px;
+            background: white;
+            border-radius: 12px;
+            margin-bottom: 15px;
+            cursor: pointer;
+            border: 3px solid #e0e0e0;
+            transition: all 0.3s;
+        }
+        
+        .choice-item.selected {
+            border-color: #2ed573;
+            background: #f0fff4;
+            box-shadow: 0 4px 12px rgba(46, 213, 115, 0.2);
+        }
+        
+        .choice-checkbox {
+            width: 28px;
+            height: 28px;
+            margin-left: 20px;
+            cursor: pointer;
+        }
+        
+        .choice-content { flex: 1; }
+        
+        .choice-value {
+            font-size: 1.3em;
+            font-weight: bold;
+            color: #333;
+            margin-bottom: 8px;
+        }
+        
+        .choice-status {
+            font-size: 1em;
+            color: #666;
+        }
+        
+        .choice-status.correct { color: #2ed573; font-weight: bold; }
+        
+        .order-input-container {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            margin-top: 10px;
+            padding: 8px;
+            background: #f0f8ff;
+            border-radius: 8px;
+        }
+
+        .order-input {
+            width: 60px;
+            padding: 8px;
+            border: 2px solid #2196f3;
+            border-radius: 5px;
+            font-size: 1.1em;
+            text-align: center;
+            font-weight: bold;
+            transition: all 0.3s ease;
+        }
+        
+        .order-input:disabled {
+            background: #f5f5f5;
+            border-color: #ddd;
+            color: #999;
+            cursor: not-allowed;
+            opacity: 0.6;
+        }
+
+        .order-label {
+            color: #2196f3;
+            font-weight: bold;
+        }
+        
+        .counter-box {
+            text-align: center;
+            font-size: 1.3em;
+            padding: 20px;
+            background: white;
+            border-radius: 12px;
+            margin: 25px 0;
+            border: 2px solid #e0e0e0;
+        }
+        
+        .counter-number {
+            font-size: 1.8em;
+            font-weight: bold;
+            margin: 0 10px;
+        }
+        
+        .counter-number.good { color: #2ed573; }
+        .counter-number.bad { color: #ff4757; }
+        
+        .action-buttons {
+            text-align: center;
+            padding: 25px;
+            background: #f8f9ff;
+            border-radius: 15px;
+            margin-top: 20px;
+        }
+        
+        .btn-apply {
+            background: linear-gradient(135deg, #2ed573 0%, #1abc9c 100%);
+            font-size: 1.3em;
+            padding: 20px 50px;
+        }
+        
+        .hidden { display: none; }
+        
+        .loading {
+            text-align: center;
+            padding: 60px;
+            font-size: 1.3em;
+            color: #667eea;
+        }
+        
+        .spinner {
+            border: 5px solid #f3f3f3;
+            border-top: 5px solid #667eea;
+            border-radius: 50%;
+            width: 60px;
+            height: 60px;
+            animation: spin 1s linear infinite;
+            margin: 30px auto;
+        }
+        
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+        
+        .success-msg {
+            position: fixed;
+            top: 30px;
+            right: 30px;
+            left: 30px;
+            background: #2ed573;
+            color: white;
+            padding: 25px;
+            border-radius: 15px;
+            font-size: 1.2em;
+            text-align: center;
+            z-index: 9999;
+            box-shadow: 0 10px 40px rgba(46, 213, 115, 0.4);
+            animation: slideIn 0.3s ease;
+        }
+        
+        .error-msg {
+            position: fixed;
+            top: 30px;
+            right: 30px;
+            left: 30px;
+            background: #ff4757;
+            color: white;
+            padding: 25px;
+            border-radius: 15px;
+            font-size: 1.2em;
+            text-align: center;
+            z-index: 9999;
+            box-shadow: 0 10px 40px rgba(255, 71, 87, 0.4);
+            animation: slideIn 0.3s ease;
+        }
+        
+        @keyframes slideIn {
+            from { transform: translateY(-100px); opacity: 0; }
+            to { transform: translateY(0); opacity: 1; }
+        }
+        
+        .download-section {
+            text-align: center;
+            padding: 40px;
+            background: #f8f9ff;
+            border-bottom: 3px solid #e0e0e0;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>&#x2728; محرر أسئلة JSON</h1>
+            <p>إصلاح مشاكل Mismatch في عدد الفراغات والإجابات</p>
+        </div>
+
+        <div class="upload-section" id="uploadSection">
+            <div class="upload-area" id="uploadArea">
+                <div class="upload-icon">&#x1F4E6;</div>
+                <h2 style="margin-bottom: 15px;">اسحب ملف ZIP هنا</h2>
+                <p style="color: #666; margin-bottom: 20px;">الملف يجب أن يحتوي على ملفات JSON + validation_report.csv</p>
+                <input type="file" id="fileInput" accept=".zip" style="display: none;">
+                <button class="btn" onclick="document.getElementById('fileInput').click()">
+                    &#x1F4C1; اختر ملف ZIP
+                </button>
+            </div>
+        </div>
+
+        <div class="stats hidden" id="statsSection"></div>
+        
+        <div class="download-section hidden" id="downloadSection">
+            <button class="btn btn-apply" onclick="downloadAll()">
+                &#x1F4BE; تحميل جميع الملفات المعدلة
+            </button>
+        </div>
+
+        <div id="filesContainer" class="hidden"></div>
+    </div>
+
+    <script>
+        let jsonFiles = {};
+        let csvErrors = {};
+
+        const uploadArea = document.getElementById('uploadArea');
+        const fileInput = document.getElementById('fileInput');
+
+        uploadArea.addEventListener('dragover', (e) => {
+            e.preventDefault();
+            uploadArea.style.borderColor = '#764ba2';
+            uploadArea.style.background = '#e8ebff';
+        });
+
+        uploadArea.addEventListener('dragleave', () => {
+            uploadArea.style.borderColor = '#667eea';
+            uploadArea.style.background = '#f8f9ff';
+        });
+
+        uploadArea.addEventListener('drop', (e) => {
+            e.preventDefault();
+            uploadArea.style.borderColor = '#667eea';
+            uploadArea.style.background = '#f8f9ff';
+            if (e.dataTransfer.files.length > 0) {
+                handleFile(e.dataTransfer.files[0]);
+            }
+        });
+
+        fileInput.addEventListener('change', (e) => {
+            if (e.target.files.length > 0) {
+                handleFile(e.target.files[0]);
+            }
+        });
+
+        async function handleFile(file) {
+            if (!file.name.endsWith('.zip')) {
+                alert('يرجى رفع ملف ZIP فقط');
+                return;
+            }
+
+            showLoading();
+
+            try {
+                const zip = await JSZip.loadAsync(file);
+                
+                const csvFile = zip.file('validation_report.csv');
+                if (!csvFile) {
+                    alert('ملف validation_report.csv غير موجود');
+                    hideLoading();
+                    return;
+                }
+
+                const csvContent = await csvFile.async('string');
+                parseCSV(csvContent);
+
+                const promises = [];
+                zip.forEach((path, entry) => {
+                    if (path.endsWith('.json') && !entry.dir) {
+                        promises.push(
+                            entry.async('string').then(content => {
+                                const filename = path.split('/').pop();
+                                jsonFiles[filename] = {
+                                    data: JSON.parse(content),
+                                    modified: false
+                                };
+                            })
+                        );
+                    }
+                });
+
+                await Promise.all(promises);
+
+                displayStats();
+                displayFiles();
+                hideLoading();
+
+            } catch (error) {
+                alert('خطأ في قراءة الملف: ' + error.message);
+                console.error(error);
+                hideLoading();
+            }
+        }
+
+        function parseCSV(content) {
+            csvErrors = {};
+            const lines = content.trim().split('\n');
+            
+            for (let i = 1; i < lines.length; i++) {
+                const line = lines[i].trim();
+                if (!line) continue;
+
+                const match = line.match(/^"?([^",]+)"?,\s*"?([^",]+)"?,\s*"?(.+)"?$/);
+                if (!match) continue;
+
+                const [, filename, part, error] = match;
+                
+                if (!csvErrors[filename]) {
+                    csvErrors[filename] = [];
+                }
+
+                csvErrors[filename].push({
+                    part: part,
+                    error: error.replace(/^"|"$/g, '')
+                });
+            }
+        }
+
+        function showLoading() {
+            document.getElementById('uploadSection').innerHTML = '<div class="loading"><div class="spinner"></div><p>جاري تحميل وتحليل الملفات...</p></div>';
+        }
+
+        function hideLoading() {
+            document.getElementById('uploadSection').classList.add('hidden');
+            document.getElementById('statsSection').classList.remove('hidden');
+            document.getElementById('downloadSection').classList.remove('hidden');
+            document.getElementById('filesContainer').classList.remove('hidden');
+        }
+
+        function displayStats() {
+            const totalFiles = Object.keys(jsonFiles).length;
+            const errorFiles = Object.keys(csvErrors).length;
+            const totalErrors = Object.values(csvErrors).reduce((sum, errs) => sum + errs.length, 0);
+            const modifiedFiles = Object.values(jsonFiles).filter(f => f.modified).length;
+
+            document.getElementById('statsSection').innerHTML = '<div class="stat-card"><div class="stat-number">' + totalFiles + '</div><div class="stat-label">إجمالي الملفات</div></div><div class="stat-card"><div class="stat-number">' + errorFiles + '</div><div class="stat-label">ملفات بها مشاكل</div></div><div class="stat-card"><div class="stat-number">' + totalErrors + '</div><div class="stat-label">إجمالي الأخطاء</div></div><div class="stat-card"><div class="stat-number" style="color: #2ed573;">' + modifiedFiles + '</div><div class="stat-label">تم تعديلها</div></div>';
+        }
+
+        function displayFiles() {
+            const container = document.getElementById('filesContainer');
+            let html = '';
+
+            Object.keys(csvErrors).forEach(filename => {
+                const errors = csvErrors[filename];
+                const fileData = jsonFiles[filename];
+                
+                if (!fileData) return;
+
+                html += '<div class="file-item">';
+                html += '<div class="file-header">';
+                html += '<div class="file-name">' + escapeHtml(filename) + '</div>';
+                html += '<div class="error-badge">' + errors.length + ' مشكلة</div>';
+                html += '</div>';
+
+                errors.forEach(errorInfo => {
+                    if (errorInfo.error.includes('Mismatch')) {
+                        html += generateEditor(filename, fileData, errorInfo);
+                    }
+                });
+
+                html += '</div>';
+            });
+
+            container.innerHTML = html;
+        }
+
+        function generateEditor(filename, fileData, errorInfo) {
+            const partNum = parseInt(errorInfo.part) - 1;
+            const part = fileData.data.parts[partNum];
+            const safeId = filename.replace(/[^a-zA-Z0-9]/g, '_');
+            
+            if (!part || part.type !== 'gapText' || !part.gap_text_keys) {
+                return '';
+            }
+
+            const stem = part.stem || '';
+            const gapCount = (stem.match(/data-node-variation="gap"/g) || []).length;
+            const currentCorrect = part.gap_text_keys.filter(item => item.correct_order).length;
+            
+            // تحديد اللغة واتجاه النص
+            const language = fileData.data.metadata?.language || 'en';
+            const isArabic = language === 'ar';
+            const textDirection = isArabic ? 'rtl' : 'ltr';
+            const textAlign = isArabic ? 'right' : 'left';
+
+            const questionText = stem
+                .replace(/<span[^>]*data-node-variation="gap"[^>]*>.*?<\/span>/g, ' ___ ')
+                .replace(/<[^>]*>/g, ' ')
+                .replace(/&nbsp;/g, ' ___ ')
+                .replace(/\s+/g, ' ')
+                .trim();
+
+            let html = '<div class="question-box">';
+            html += '<div class="question-title">&#x1F4DD; السؤال:</div>';
+            html += '<div class="question-text" style="direction: ' + textDirection + '; text-align: ' + textAlign + ';">' + escapeHtml(questionText) + '</div>';
+            html += '</div>';
+
+            html += '<div class="problem-trigger" data-filename="' + safeId + '" data-part="' + partNum + '">مشكلة</div>';
+            html += '<div class="problem-box hidden" id="problem_' + safeId + '_' + partNum + '">';
+            html += '<div class="problem-title">&#x26A0;&#xFE0F; المشكلة:</div>';
+            html += '<div class="stat-row">&#x2705; عدد الفراغات المطلوبة: <strong style="color: #2ed573; font-size: 1.3em;">' + gapCount + '</strong></div>';
+            html += '<div class="stat-row">&#x274C; عدد الإجابات الصحيحة حالياً: <strong style="color: #ff4757; font-size: 1.3em;">' + currentCorrect + '</strong></div>';
+            html += '<div class="stat-row" style="background: #e3f2fd; border-right: 4px solid #2196f3;"><strong>&#x1F4A1; الحل:</strong> اختر <strong style="color: #2196f3; font-size: 1.3em;">' + gapCount + '</strong> إجابات فقط</div>';
+            html += '</div>';
+
+            html += '<div class="choices-box">';
+            html += '<div class="choices-title">&#x2611;&#xFE0F; اختر الإجابات الصحيحة (' + gapCount + ' إجابة):</div>';
+            
+            part.gap_text_keys.forEach((item, idx) => {
+                const isCorrect = !!item.correct_order;
+                const checkboxId = 'cb_' + safeId + '_' + partNum + '_' + idx;
+                const orderInputId = 'order_' + safeId + '_' + partNum + '_' + idx;
+                const orderValue = item.correct_order || '';
+                
+                html += '<label class="choice-item' + (isCorrect ? ' selected' : '') + '" id="label_' + checkboxId + '">';
+                html += '<input type="checkbox" class="choice-checkbox" id="' + checkboxId + '"' + (isCorrect ? ' checked' : '') + '>';
+                html += '<div class="choice-content">';
+                html += '<div class="choice-value" style="direction: ' + textDirection + '; text-align: ' + textAlign + ';">' + escapeHtml(String(item.value)) + '</div>';
+                
+                if (isCorrect) {
+                    html += '<div class="choice-status correct">&#x2705; إجابة صحيحة</div>';
+                } else {
+                    html += '<div class="choice-status">&#x2B55; غير محددة كإجابة صحيحة</div>';
+                }
+                
+                // عرض input الترتيب دائماً
+                html += '<div class="order-input-container" id="order_container_' + safeId + '_' + partNum + '_' + idx + '">';
+                html += '<span class="order-label">الترتيب:</span>';
+                html += '<input type="number" class="order-input" id="' + orderInputId + '" value="' + orderValue + '" min="1" data-idx="' + idx + '"' + (!isCorrect ? ' disabled' : '') + '>';
+                html += '</div>';
+                
+                html += '</div></label>';
+            });
+
+            html += '<div class="counter-box">';
+            html += 'اخترت: <span class="counter-number ' + (currentCorrect === gapCount ? 'good' : 'bad') + '" id="counter_' + safeId + '_' + partNum + '">' + currentCorrect + '</span> من ' + gapCount;
+            html += '</div>';
+
+            html += '<div class="action-buttons">';
+            html += '<button class="btn btn-apply" data-filename="' + safeId + '" data-part="' + partNum + '" data-count="' + gapCount + '">&#x2705; تطبيق الاختيار</button>';
+            html += '</div>';
+
+            html += '</div>';
+
+            setTimeout(() => setupEvents(filename, safeId, partNum, gapCount), 100);
+
+            return html;
+        }
+
+        function setupEvents(filename, safeId, partNum, required) {
+            const part = jsonFiles[filename].data.parts[partNum];
+
+            part.gap_text_keys.forEach((item, idx) => {
+                const checkboxId = 'cb_' + safeId + '_' + partNum + '_' + idx;
+                const checkbox = document.getElementById(checkboxId);
+
+                if (checkbox) {
+                    checkbox.addEventListener('change', function() {
+                        updateSelection(filename, partNum, required);
+                    });
+                }
+            });
+
+            const applyBtn = document.querySelector('button.btn-apply[data-filename="' + safeId + '"][data-part="' + partNum + '"]');
+            if (applyBtn) {
+                applyBtn.addEventListener('click', function() {
+                    applySelection(filename, partNum, required);
+                });
+            }
+
+            // إضافة event listeners للزر مشكلة
+            const problemTrigger = document.querySelector('.problem-trigger[data-filename="' + safeId + '"][data-part="' + partNum + '"]');
+            const problemBox = document.getElementById('problem_' + safeId + '_' + partNum);
+            
+            if (problemTrigger && problemBox) {
+                problemTrigger.addEventListener('mouseenter', function() {
+                    problemBox.classList.remove('hidden');
+                });
+                
+                problemTrigger.addEventListener('mouseleave', function() {
+                    problemBox.classList.add('hidden');
+                });
+            }
+
+            // إضافة event listeners لحقول الترتيب (لجميع الاختيارات)
+            part.gap_text_keys.forEach((item, idx) => {
+                const orderInputId = 'order_' + safeId + '_' + partNum + '_' + idx;
+                const orderInput = document.getElementById(orderInputId);
+                
+                if (orderInput) {
+                    orderInput.addEventListener('change', function() {
+                        const newOrder = parseInt(this.value);
+                        
+                        if (newOrder > 0) {
+                            // حفظ القيمة الجديدة بدون تحقق
+                            part.gap_text_keys[idx].correct_order = newOrder;
+                            jsonFiles[filename].modified = true;
+                            displayStats();
+                            showSuccess('✅ تم تحديث الترتيب إلى ' + newOrder);
+                        } else {
+                            showError('⚠️ يجب إدخال رقم أكبر من صفر!');
+                        }
+                    });
+                }
+            });
+        }
+
+        function updateSelection(filename, partNum, required) {
+            const safeId = filename.replace(/[^a-zA-Z0-9]/g, '_');
+            const part = jsonFiles[filename].data.parts[partNum];
+            
+            let count = 0;
+            part.gap_text_keys.forEach((item, idx) => {
+                const checkboxId = 'cb_' + safeId + '_' + partNum + '_' + idx;
+                const checkbox = document.getElementById(checkboxId);
+                const label = document.getElementById('label_' + checkboxId);
+                const orderInputId = 'order_' + safeId + '_' + partNum + '_' + idx;
+                const orderInput = document.getElementById(orderInputId);
+
+                if (checkbox && checkbox.checked) {
+                    count++;
+                    if (label) {
+                        label.classList.add('selected');
+                    }
+                    // تفعيل input الترتيب
+                    if (orderInput) {
+                        orderInput.disabled = false;
+                        // إذا لم يكن هناك قيمة، ضع قيمة افتراضية
+                        if (!orderInput.value) {
+                            orderInput.value = count;
+                        }
+                    }
+                } else {
+                    if (label) {
+                        label.classList.remove('selected');
+                    }
+                    // تعطيل input الترتيب
+                    if (orderInput) {
+                        orderInput.disabled = true;
+                    }
+                }
+            });
+
+            const counter = document.getElementById('counter_' + safeId + '_' + partNum);
+            if (counter) {
+                counter.textContent = count;
+                counter.className = count === required ? 'counter-number good' : 'counter-number bad';
+            }
+        }
+
+        function applySelection(filename, partNum, required) {
+            const safeId = filename.replace(/[^a-zA-Z0-9]/g, '_');
+            const part = jsonFiles[filename].data.parts[partNum];
+
+            const selected = [];
+            part.gap_text_keys.forEach((item, idx) => {
+                const checkbox = document.getElementById('cb_' + safeId + '_' + partNum + '_' + idx);
+                if (checkbox && checkbox.checked) {
+                    selected.push(idx);
+                }
+            });
+
+            if (selected.length !== required) {
+                alert('يجب اختيار ' + required + ' إجابات بالضبط! أنت اخترت ' + selected.length + ' إجابة.');
+                return;
+            }
+
+            part.gap_text_keys.forEach(item => {
+                delete item.correct_order;
+            });
+
+            selected.forEach((idx, order) => {
+                part.gap_text_keys[idx].correct_order = order + 1;
+            });
+
+            jsonFiles[filename].modified = true;
+            displayStats();
+            displayFiles();
+            showSuccess('تم تطبيق التعديلات بنجاح على ' + filename);
+        }
+
+        function showSuccess(message) {
+            const div = document.createElement('div');
+            div.className = 'success-msg';
+            div.textContent = message;
+            document.body.appendChild(div);
+            setTimeout(() => div.remove(), 3000);
+        }
+
+        function showError(message) {
+            const div = document.createElement('div');
+            div.className = 'error-msg';
+            div.textContent = message;
+            document.body.appendChild(div);
+            setTimeout(() => div.remove(), 3000);
+        }
+
+        function shuffleArray(array) {
+            const shuffled = [...array];
+            for (let i = shuffled.length - 1; i > 0; i--) {
+                const j = Math.floor(Math.random() * (i + 1));
+                [shuffled[i], shuffled[j]] = [shuffled[j], shuffled[i]];
+            }
+            return shuffled;
+        }
+
+        function validateAllFiles() {
+            const errors = [];
+            
+            Object.keys(jsonFiles).forEach(filename => {
+                if (jsonFiles[filename].modified) {
+                    const fileData = jsonFiles[filename].data;
+                    
+                    fileData.parts.forEach((part, partIdx) => {
+                        if (part.type === 'gapText' && part.gap_text_keys) {
+                            const stem = part.stem || '';
+                            const gapCount = (stem.match(/data-node-variation="gap"/g) || []).length;
+                            const correctAnswers = part.gap_text_keys.filter(item => item.correct_order);
+                            const correctCount = correctAnswers.length;
+                            
+                            // التحقق من تطابق عدد الإجابات مع عدد الفراغات
+                            if (correctCount !== gapCount) {
+                                errors.push({
+                                    file: filename,
+                                    part: partIdx + 1,
+                                    error: `عدد الإجابات الصحيحة (${correctCount}) لا يساوي عدد الفراغات (${gapCount})`
+                                });
+                            }
+                            
+                            // التحقق من عدم تكرار correct_order
+                            const orders = correctAnswers.map(item => item.correct_order);
+                            const uniqueOrders = new Set(orders);
+                            
+                            if (orders.length !== uniqueOrders.size) {
+                                // إيجاد الأرقام المكررة
+                                const duplicates = orders.filter((item, index) => orders.indexOf(item) !== index);
+                                errors.push({
+                                    file: filename,
+                                    part: partIdx + 1,
+                                    error: `أرقام الترتيب مكررة: ${[...new Set(duplicates)].join(', ')}`
+                                });
+                            }
+                        }
+                    });
+                }
+            });
+            
+            return errors;
+        }
+
+        async function downloadAll() {
+            // التحقق من صحة جميع الملفات المعدلة
+            const validationErrors = validateAllFiles();
+            
+            if (validationErrors.length > 0) {
+                // إنشاء رسالة خطأ مفصلة
+                let errorMessage = '❌ يوجد ' + validationErrors.length + ' خطأ يجب إصلاحه قبل التحميل:\n\n';
+                
+                validationErrors.forEach((err, idx) => {
+                    errorMessage += `${idx + 1}. ${err.file} - Part ${err.part}:\n   ${err.error}\n\n`;
+                });
+                
+                errorMessage += '\nيرجى إصلاح هذه الأخطاء ثم المحاولة مرة أخرى.';
+                
+                // عرض الأخطاء في alert
+                alert(errorMessage);
+                
+                // عرض رسالة خطأ في الواجهة
+                showError('⚠️ لا يمكن التحميل! يوجد ' + validationErrors.length + ' خطأ. راجع التفاصيل.');
+                
+                return; // منع التحميل
+            }
+            
+            const zip = new JSZip();
+            
+            let modifiedCount = 0;
+            Object.keys(jsonFiles).forEach(filename => {
+                if (jsonFiles[filename].modified) {
+                    const fileData = JSON.parse(JSON.stringify(jsonFiles[filename].data));
+                    
+                    // عمل shuffle للـ gap_text_keys في كل part
+                    fileData.parts.forEach(part => {
+                        if (part.type === 'gapText' && part.gap_text_keys) {
+                            part.gap_text_keys = shuffleArray(part.gap_text_keys);
+                        }
+                    });
+                    
+                    zip.file(filename, JSON.stringify(fileData, null, 2));
+                    modifiedCount++;
+                }
+            });
+
+            if (modifiedCount === 0) {
+                alert('لا توجد ملفات معدلة! يرجى تطبيق التعديلات أولاً.');
+                return;
+            }
+
+            const blob = await zip.generateAsync({type: 'blob'});
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = 'fixed_json_files.zip';
+            a.click();
+            URL.revokeObjectURL(url);
+
+            showSuccess('تم تحميل ' + modifiedCount + ' ملف معدل بنجاح! (مع خلط الاختيارات)');
+        }
+
+        function escapeHtml(text) {
+            const div = document.createElement('div');
+            div.textContent = text;
+            return div.innerHTML;
+        }
+    </script>
+</body>
+</html>
