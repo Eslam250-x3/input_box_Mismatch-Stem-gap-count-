@@ -679,19 +679,37 @@
             part.gap_text_keys.forEach((item, idx) => {
                 const orderInputId = 'order_' + safeId + '_' + partNum + '_' + idx;
                 const orderInput = document.getElementById(orderInputId);
+                const checkboxId = 'cb_' + safeId + '_' + partNum + '_' + idx;
+                const checkbox = document.getElementById(checkboxId);
                 
                 if (orderInput) {
                     orderInput.addEventListener('change', function() {
                         const newOrder = parseInt(this.value);
                         
                         if (newOrder > 0) {
-                            // حفظ القيمة الجديدة بدون تحقق
-                            part.gap_text_keys[idx].correct_order = newOrder;
-                            jsonFiles[filename].modified = true;
-                            displayStats();
-                            showSuccess('✅ تم تحديث الترتيب إلى ' + newOrder);
-                        } else {
+                            // تحقق من أن الخيار محدد
+                            if (checkbox && checkbox.checked) {
+                                // حفظ القيمة الجديدة
+                                part.gap_text_keys[idx].correct_order = newOrder;
+                                jsonFiles[filename].modified = true;
+                                displayStats();
+                                showSuccess('✅ تم تحديث الترتيب إلى ' + newOrder);
+                            } else {
+                                // إذا لم يكن محدد، امسح القيمة
+                                this.value = '';
+                                showError('⚠️ يجب تحديد الخيار أولاً قبل إدخال الترتيب!');
+                            }
+                        } else if (this.value !== '') {
                             showError('⚠️ يجب إدخال رقم أكبر من صفر!');
+                            this.value = '';
+                        }
+                    });
+                    
+                    // عند التركيز على الحقل
+                    orderInput.addEventListener('focus', function() {
+                        if (checkbox && !checkbox.checked) {
+                            showError('⚠️ يجب تحديد الخيار أولاً!');
+                            this.blur();
                         }
                     });
                 }
@@ -718,8 +736,8 @@
                     // تفعيل input الترتيب
                     if (orderInput) {
                         orderInput.disabled = false;
-                        // إذا لم يكن هناك قيمة، ضع قيمة افتراضية
-                        if (!orderInput.value) {
+                        // لا تغير القيمة إذا كانت موجودة مسبقاً - فقط ضع قيمة افتراضية إذا كانت فارغة تماماً
+                        if (!orderInput.value || orderInput.value === '') {
                             orderInput.value = count;
                         }
                     }
@@ -727,9 +745,12 @@
                     if (label) {
                         label.classList.remove('selected');
                     }
-                    // تعطيل input الترتيب
+                    // تعطيل input الترتيب وحذف القيمة عند إلغاء التحديد
                     if (orderInput) {
                         orderInput.disabled = true;
+                        orderInput.value = '';
+                        // حذف correct_order من البيانات
+                        delete part.gap_text_keys[idx].correct_order;
                     }
                 }
             });
@@ -746,10 +767,19 @@
             const part = jsonFiles[filename].data.parts[partNum];
 
             const selected = [];
+            const orderValues = {};
+            
+            // جمع الاختيارات المحددة مع قيم الترتيب
             part.gap_text_keys.forEach((item, idx) => {
                 const checkbox = document.getElementById('cb_' + safeId + '_' + partNum + '_' + idx);
+                const orderInput = document.getElementById('order_' + safeId + '_' + partNum + '_' + idx);
+                
                 if (checkbox && checkbox.checked) {
                     selected.push(idx);
+                    // احفظ الترتيب الذي أدخله المستخدم
+                    if (orderInput && orderInput.value) {
+                        orderValues[idx] = parseInt(orderInput.value);
+                    }
                 }
             });
 
@@ -758,12 +788,29 @@
                 return;
             }
 
+            // التحقق من وجود ترتيب لجميع الاختيارات المحددة
+            const missingOrders = selected.filter(idx => !orderValues[idx]);
+            if (missingOrders.length > 0) {
+                alert('يرجى إدخال رقم الترتيب لجميع الاختيارات المحددة!');
+                return;
+            }
+
+            // التحقق من عدم تكرار أرقام الترتيب
+            const orders = Object.values(orderValues);
+            const uniqueOrders = new Set(orders);
+            if (orders.length !== uniqueOrders.size) {
+                alert('لا يمكن أن تكون أرقام الترتيب متكررة! يرجى استخدام أرقام مختلفة.');
+                return;
+            }
+
+            // حذف جميع correct_order الموجودة
             part.gap_text_keys.forEach(item => {
                 delete item.correct_order;
             });
 
-            selected.forEach((idx, order) => {
-                part.gap_text_keys[idx].correct_order = order + 1;
+            // تطبيق الترتيب الذي أدخله المستخدم
+            selected.forEach(idx => {
+                part.gap_text_keys[idx].correct_order = orderValues[idx];
             });
 
             jsonFiles[filename].modified = true;
